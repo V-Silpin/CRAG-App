@@ -2,10 +2,17 @@ from langgraph.graph import END, StateGraph, START
 from models.models import GraphState
 from models.schemas import retrieve, grade_documents, generate, web_search, decide_to_generate, transform_query
 from dataclasses import dataclass
+from langfuse.callback import CallbackHandler
+from langfuse.decorators import langfuse_context, observe
 
 @dataclass
 class Agent():
     app: object = None
+    langfuse_handler: object = CallbackHandler(
+        secret_key="",
+        public_key="",
+        host="http://localhost:3000"
+    )
 
     def compile(self) -> None:
         workflow = StateGraph(GraphState)
@@ -34,6 +41,8 @@ class Agent():
 
         # Compile
         self.app = workflow.compile()
+
+    @observe
     def run(self, query) -> None:
-        output = self.app.invoke(query)
+        output = self.app.invoke(query, config={"callbacks": [self.langfuse_handler]})
         return output
